@@ -1,0 +1,45 @@
+#if you want to install in linux/ubuntu this document useful.
+
+sudo apt update
+sudo apt upgrade
+sudo apt-get install build-essential libssl-dev libffi-dev python3-dev python3-pip libsasl2-dev libldap2-dev
+
+sudo apt-get install python-venv
+or 
+pip install virtualenv
+
+pip install Flask-WTF==0.14.3
+
+
+export PATH=/home/ubuntu/venv/bin:$PATH
+
+sudo apt install python3.8-venv
+python3 -m venv venv
+
+. venv/bin/activate
+
+
+//ERROR: flask-appbuilder 3.3.2 has requirement Flask-WTF<0.15.0,>=0.14.2, but you'll have flask-wtf 0.15.1 which is incompatible.
+if u get this problem pls execute this 
+//install superset
+pip install apache-superset==1.3.0
+pip install apache-superset
+
+pip install Flask-WTF==0.14.3
+
+
+superset db upgrade
+
+superset init
+
+superset fab create-admin
+
+superset load_examples
+
+superset run -p 8088 --with-threads --reload --debugger
+
+
+superset run -h ip-172-31-41-13.ap-south-1.compute.internal -p 8088  // its private host
+
+http://ec2-52-66-207-238.ap-south-1.compute.amazonaws.com:8088 // its public hostname
+

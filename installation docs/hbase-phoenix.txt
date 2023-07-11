@@ -1,0 +1,169 @@
+Hbase powerful than cassandra but its not sql friendly.
+
+//start hbase
+hbase shell
+list //to show tables name
+//create 'tablename', 'column-family'
+
+create 'users', 'phone','name','email'
+list      // list used to display all tables information
+
+describe 'users' /// get all info about table 
+describe list[0]
+
+//insert into hbase
+//put 'table','row-name','cf:column','value'
+
+put 'users','venu','phone:personal','99999'
+put 'users','venu','phone:official','99888'
+put 'users','venu','email:official','venu@company.com'
+put 'users','venu','email:personal','venu@gmail.com'
+
+put 'users','venu','name:official','venu'
+put 'users','venu','name:nickname','venkata'
+put 'users','anu','phone:personal','88899'
+put 'users','uttam','phone:official','8885599'
+
+//select * from tabblename
+scan 'users'
+
+// update table
+put 'users','anu','phone:personal','1111'
+//now what happen again if u insert its update. to update and insert ur using put command 
+
+//read data its almost like select * from tablename
+scan 'users'  
+//get 'tablename','row' // its almost like select * from table where name like 'venu'
+get 'users','venu'
+get 'users'
+delete 'users','venu','phone:personal'
+//TTL : Time to Live ... it ll take minim few seconds to reflect /apply ..
+
+
+put 'users','anu','phone:official','99888'
+
+//deleteall ‘<table name>’, ‘<row>’,
+
+deleteall 'users','venu'
+list
+drop 'users' // now you willg et error
+disable 'users'
+drop 'users'
+list
+
+delete
+
+
+//run in script format
+cat> script.rb
+
+create 'users','phone','name'
+put 'users', 'venu','phone:personal','9999'
+put 'users', 'venu', 'phone:official','88888'
+put 'users', 'venu','name:fname','venu'
+put 'users', 'venu', 'name:lname','katra'
+
+put 'users', 'anu','phone:personal','66669'
+put 'users', 'anu', 'phone:official','77788'
+put 'users', 'anu','name:fname','anuradha'
+put 'users', 'anu', 'name:lname','katragadda'
+
+exit
+
+hbase shell -n script.rb
+hbase shell
+list
+scan 'users'
+
+
+# sql layer on top of hbase ..called phoenix ... 
+# phoenix working with only hbase .. not for any other 
+https://phoenix.apache.org/faq.html
+whereis phoenix
+cd /usr/lib/phoenix/bin
+
+./sqlline.py localhost
+
+!tables // SHOW TABLES;
+
+insert into ... update tablename set
+up+sert
+
+create table emp(id integer primary key, fname varchar, lname varchar);
+list // goto hbase and try any table created or not
+scan 'EMP'
+describe 'EMP'
+
+// inphoenix insert into & update both combined ... as .. upsert .. used to update and insert
+
+
+insert into tab values ( ....)
+update set tab ...,.... combine insert + update .... in update .... up ...... in insert take remaining chars ..sert ..... up+sert = upsert 
+
+insert into .....
+update tab set ..
+combine both insert + update
+
+
+UPSERT INTO emp VALUES(1,'VENU','KATRAGADDA');
+UPSERT INTO emp VALUES(2,'anu','KATRAGADDA');
+UPSERT INTO emp VALUES(3,'nirmal','KATRAGADDA');
+UPSERT INTO emp VALUES(4,'koti','pattipati');
+
+select * from emp;
+
+SELECT * from emp;
+scan emp;
+DELETE FROM EMP WHERE ID=1;
+DELETE FROM EMP WHERE lname='KATRAGADDA';
+
+
+create table dept (name varchar,mobile integer primary key,email varchar);
+upsert into dept values('VENU',88888,'venu@gmail.com');
+upsert into dept values('anu',88833,'anu@gmail.com');
+upsert into dept values('sumathi',84488,'sumathi@gmail.com');
+upsert into dept values('jyothi',88886,'jyothi@gmail.com');
+
+
+spark-submit --class com.ibm.bigdata.windowfunction --master local --deploy-mode client s3://arshadjoelbucket/appjars/scalapoc2021_2.11-0.1.jar EMP
+
+Caused by: java.lang.ClassNotFoundException: org.apache.phoenix.spark.DefaultSource
+
+in prod env multi framework integratio nintegration very headache
+so copy jars to lib
+
+
+df = spark.read.format("org.apache.phoenix.spark").option("table", "dept").option("zkUrl", "localhost:2181").load()
+
+
+
+sudo cp /usr/lib/phoenix/phoenix-spark-4.14.3-HBase-1.4.jar /usr/lib/spark/jars
+ sudo cp /usr/lib/phoenix/phoenix-4.14.3-HBase-1.4-client.jar /usr/lib/spark/jars
+ // us-500.csv store in s3 next export to phoenix to process
+//Before store data in phoenix, its mandatory u have to create a table in phoenix. its mandatory.
+
+
+ create table usdata (first_name varchar(32) primary key, last_name varchar(32), company_name varchar(32), address varchar(32), city varchar(32), county varchar(32), state varchar(32), zip integer, phone1 varchar(32), phone2 varchar(32), email varchar(64), web varchar(64))
+ 
+
+ spark-submit --class com.tcs.bigdata.sparksql.hbasePhoenix --master local --deploy-mode client  file:///home/hadoop/sparkpocs_2.11-0.1.jar s3://satishbucket2019/input/us-500.csv
+ // columns also must case sensitive/upper case 
+ 
+ from pyspark.sql.functions import *
+from pyspark.sql.window import *
+import sys
+import os
+
+spark = SparkSession.builder.master("local").appName("test").getOrCreate()
+data=sys.argv[1]
+tab=sys.argv[2]
+df=spark.read.format("csv").option("header","true").option("sep",",").option("inferSchema","true").load(data)
+#tab=sys.argv[1]
+#df = spark.read.format("org.apache.phoenix.spark").option("table",tab ).option("zkUrl", "localhost:2181").load()
+#ndf=df.select(*(upper(col(c).alias(c) for c in df.columns))
+#ndf = df.toDF(*(upper(col(c).alias(c) for c in df.columns)))
+ndf=df.toDF("FIRST_NAME","LAST_NAME","COMPANY_NAME","ADDRESS","CITY","COUNTY","STATE","ZIP","PHONE1","PHONE2","EMAIL","WEB")
+#ndf = df.toDF(*[re.sub('[^a-zA-Z]', '', x) for x in df.columns])
+
+ndf.show()
+ndf.write.mode("overwrite").format("org.apache.phoenix.spark").option("table",tab ).option("zkUrl", "localhost:2181").save()

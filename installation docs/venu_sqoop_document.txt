@@ -1,0 +1,341 @@
+SQOOP commands ..........venu katragadda ........www.bigdataanalyst.in...............8500002025
+
+what is sqoop?
+Sqoop is a framework used to data exchange (import & export) between rdbms and hadoop ecosystem ..means read oracle / mysql data and store in hdfs/hive similarly if u have any data in hdfs, export to oracle ...
+sqoop can do 3 activities
+1) data import 
+2) export
+3) execute something sql query on top of rdbms use 
+
+2) kafka vs sqoop?
+sqoop u no need to write any code. Sqoop automatically generate code that code get data from rdbms and store in hdfs, similarly export too.
+but kafka , u have to prepare java/python/scala code (producer & consumer) to import or export data. Thats y it's called message broker, sqoop is data exchange framework.
+
+
+
+
+sqoop import
+If you are implementing in emr pls remember these points
+sqoop installed in /usr/lib/sqoop/ folder.
+So if you want to import data from oracle place all jars at /usr/lib/sqoop/lib
+
+#check sqoop installed or not?
+simply type ...whereis sqoop .....hit enter
+...................................
+[hadoop@ip-172-31-47-69 ~]$ whereis sqoop
+sqoop: /usr/bin/sqoop /usr/lib/sqoop /etc/sqoop /usr/share/man/man1/sqoop.1.gz
+[hadoop@ip-172-31-47-69 ~]$ whereis hive
+hive: /usr/bin/hive /usr/lib/hive /etc/hive /usr/share/man/man1/hive.1.gz
+[hadoop@ip-172-31-47-69 ~]$ whereis pig
+pig:
+[hadoop@ip-172-31-47-69 ~]$ whereis spark
+spark:
+[hadoop@ip-172-31-47-69 ~]$
+.........................................
+so sqoop installed.
+means pig and spark not installed  but hive and sqoop installed.
+(must type whereis instead of where is , means don't mention space between where and is simply type whereis )
+
+before going to handson ............
+ ls /usr/lib/sqoop/lib
+ 
+ [hadoop@ip-172-31-47-69 ~]$ ls /usr/lib/sqoop/lib
+ant-contrib-1.0b3.jar                  jackson-core-2.6.7.jar               parquet-common-1.6.0.jar
+ant-eclipse-1.0-jvm1.2.jar             jackson-core-asl-1.9.13.jar          parquet-encoding-1.6.0.jar
+avro-1.8.2.jar                         jackson-databind-2.6.7.4.jar         parquet-format-2.2.0-rc1.jar
+avro-mapred-1.8.2-hadoop2.jar          jackson-mapper-asl-1.9.13.jar        parquet-generator-1.6.0.jar
+aws-glue-datacatalog-hive2-client.jar  kite-data-core-1.1.0.jar             parquet-hadoop-1.6.0.jar
+commons-codec-1.4.jar                  kite-data-hive-1.1.0.jar             parquet-jackson-1.6.0.jar
+commons-compress-1.8.1.jar             kite-data-mapreduce-1.1.0.jar        postgresql-jdbc.jar
+commons-io-1.4.jar                     kite-hadoop-compatibility-1.1.0.jar  RedshiftJDBC.jar
+commons-jexl-2.1.1.jar                 mariadb-connector-java.jar           slf4j-api-1.6.1.jar
+commons-lang3-3.4.jar                  opencsv-2.3.jar                      snappy-java-1.1.7.3.jar
+commons-logging-1.1.1.jar              paranamer-2.7.jar                    xz-1.5.jar
+hsqldb-1.8.0.10.jar                    parquet-avro-1.6.0.jar
+jackson-annotations-2.6.0.jar          parquet-column-1.6.0.jar
+
+in this sqoop /usr/lib/sqoop/lib folder all imp dependencies available. Here there is no mysql/oracle/mssql dependency there is no such jars .... at that time it's unable to import data from mysql/oracle/mssql ..
+but able to import Redshift and postgresql the main reason u have RedshiftJDBC.jar,postgresql-jdbc.jar jars within this folder.
+
+#solution use winscp or get from s3 ... and copy jars to /usr/lib/sqoop/lib folder 
+#already few dependencies available in ur bucket/drivers/ folder now copy like this 
+ aws s3 cp s3://goutami/drivers/ . --recursive --exclude "*" --include "*.jar"
+   
+     ls /usr/lib/sqoop/lib
+     sudo mv *.jar /usr/lib/sqoop/lib/
+     ls /usr/lib/sqoop/lib
+
+
+[hadoop@ip-172-31-47-69 ~]$ ls /usr/lib/sqoop/lib
+ant-contrib-1.0b3.jar                  jackson-databind-2.6.7.4.jar         parquet-common-1.6.0.jar
+ant-eclipse-1.0-jvm1.2.jar             jackson-mapper-asl-1.9.13.jar        parquet-encoding-1.6.0.jar
+avro-1.8.2.jar                         kite-data-core-1.1.0.jar             parquet-format-2.2.0-rc1.jar
+avro-mapred-1.8.2-hadoop2.jar          kite-data-hive-1.1.0.jar             parquet-generator-1.6.0.jar
+aws-glue-datacatalog-hive2-client.jar  kite-data-mapreduce-1.1.0.jar        parquet-hadoop-1.6.0.jar
+commons-codec-1.4.jar                  kite-hadoop-compatibility-1.1.0.jar  parquet-jackson-1.6.0.jar
+commons-compress-1.8.1.jar             mariadb-connector-java.jar           postgresql-42.2.14.jar
+commons-io-1.4.jar                     mariadb-java-client-1.1.10.jar       postgresql-jdbc.jar
+commons-jexl-2.1.1.jar                 mssql-jdbc-9.4.1.jre11.jar           RedshiftJDBC42-1.2.10.1009.jar
+commons-lang3-3.4.jar                  mysql-connector-java-8.0.12.jar      redshift-jdbc42-2.0.0.4.jar
+commons-logging-1.1.1.jar              ojdbc7.jar                           RedshiftJDBC.jar
+hsqldb-1.8.0.10.jar                    opencsv-2.3.jar                      slf4j-api-1.6.1.jar
+jackson-annotations-2.6.0.jar          paranamer-2.7.jar                    snappy-java-1.1.7.3.jar
+jackson-core-2.6.7.jar                 parquet-avro-1.6.0.jar               sqljdbc42.jar
+jackson-core-asl-1.9.13.jar            parquet-column-1.6.0.jar             xz-1.5.jar
+
+#Now all mysql , mssql jars dependencies availablenow sqoop working fine.
+
+
+
+mysql url: jdbc:mysql://mysqldb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:3306/mysqldb
+oracle url: jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl
+mssql url: jdbc:sqlserver://mssql.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1433
+
+
+
+//import from mysql 
+sqoop import --connect jdbc:mysql://mysqldb.ckze5eqt6umg.ap-south-1.rds.amazonaws.com:3306/mysqldb --username myuser --password mypassword --table emp  --target-dir=/user/venu/empdata -m 1
+
+
+#sqoop it's case sensitive --table emp not working always mention --table EMP ....
+#target-dir ... emp data store in specific hadoop/hdfs folder .... 
+
+[hadoop@ip-172-31-47-69 ~]$ sqoop import --connect jdbc:oracle:thin:@//database-1.cpnk9yb0uvo8.ap-south-1.rds.
+amazonaws.com:1521/odb --username ouser --password opassword --table EMP  --target-dir=/sqoop/import/empdata -m
+ 1
+[hadoop@ip-172-31-47-69 ~]$ hdfs dfs -ls /
+Found 5 items
+drwxr-xr-x   - hdfs   hdfsadmingroup          0 2023-05-01 13:39 /apps
+drwxr-xr-x   - hadoop hdfsadmingroup          0 2023-05-01 14:34 /sqoop
+drwxrwxrwt   - hdfs   hdfsadmingroup          0 2023-05-01 13:40 /tmp
+drwxr-xr-x   - hdfs   hdfsadmingroup          0 2023-05-01 13:39 /user
+drwxr-xr-x   - hdfs   hdfsadmingroup          0 2023-05-01 13:39 /var
+[hadoop@ip-172-31-47-69 ~]$ hdfs dfs -ls /sqoop/
+^[[AFound 1 items
+drwxr-xr-x   - hadoop hdfsadmingroup          0 2023-05-01 14:34 /sqoop/import
+[hadoop@ip-172-31-47-69 ~]$ hdfs dfs -ls /sqoop/import/empdata
+Found 2 items
+-rw-r--r--   1 hadoop hdfsadmingroup          0 2023-05-01 14:35 /sqoop/import/empdata/_SUCCESS
+-rw-r--r--   1 hadoop hdfsadmingroup        817 2023-05-01 14:35 /sqoop/import/empdata/part-m-00000
+[hadoop@ip-172-31-47-69 ~]$ hdfs dfs -cat /sqoop/import/empdata/part-m-00000 | head -n 5
+7839,KING,PRESIDENT,null,1981-11-17 00:00:00.0,5000,null,10
+7698,BLAKE,MANAGER,7839,1981-05-01 00:00:00.0,2850,null,30
+7782,CLARK,MANAGER,7839,1981-06-09 00:00:00.0,2450,null,10
+7566,JONES,MANAGER,7839,1981-04-02 00:00:00.0,2975,null,20
+7654,MARTIN,SALESMAN,7698,1981-09-28 00:00:00.0,1250,1400,30
+
+#pls note head -n 5 highly recommended .. why? let eg: u have 100cr records inead of read all 100cr records i ant to display top 5 records only at that time "| head -n 5" highly recommended
+hdfs dfs -cat /sqoop/import/empdata/part-m-00000 | head -n 5
+
+
+hdfs dfs -cat /sqoop/import/empdata/part-m-00000 | head -n 5
+instead of read long path simply use like this. 
+hdfs dfs -cat /s*/i*/e*/p* | head -n 8
+
+it means start with /s after that any word ok next /i after that i anything ok .. 
+//////////////////////
+in mapreduce u have 2 stages called map and reduce ...
+map ... & reduce.... used to process data
+#but sqoop only importing there is no processing so sqoop just map enough no need reduce..
+#if sqoop use both map and reduce, at that time sqoop can import and process the data as well.
+#Any situation in sqoop there is no reducer.
+
+//if you are not mention target-dir by default its store in /user/hadoop/ path
+
+sqoop import --connect jdbc:mysql://mysqldb.ckze5eqt6umg.ap-south-1.rds.amazonaws.com:3306/mysqldb --username ouser --password opassword --table emp -m 1
+
+//hide password 
+sqoop import --connect jdbc:mysql://mysqldb.ckze5eqt6umg.ap-south-1.rds.amazonaws.com:3306/mysqldb --username ouser --password-file s3://apachesparktraining/Training/jars/opassword.txt --target-dir /testing --table emp -m 1
+
+
+
+//store data in s3
+ sqoop import --connect jdbc:mysql://mysqldb.ckze5eqt6umg.ap-south-1.rds.amazonaws.com:3306/mysqldb --username ouser --password-file s3://apachesparktraining/Training/jars/pass.txt --target-dir s3://apachesparktraining/Training/output/hidepasswordresult --table emp -m 1
+
+//import from oracle
+
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl --username ousername --password opassword --table CUSTOMER  --target-dir=/user/venu/CUSTOMERdata -m 1
+//download jdbc drive and place in sqoop lib folder and warehouse path /usr/lib/sqoop/lib
+
+so download oracle jar ojdbc7.jar from website, with winscp place in emr, than run this command 
+sudo cp ./*.jar /usr/lib/sqoop/lib
+//test these files exists or not
+ls  /usr/lib/sqoop/lib
+
+//import data based on query ... $CONDITIONS is mandatory its reference as its condition
+ 
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl --username ousername --password opassword --query 'SELECT * FROM OUSERNAME.EMP where sal >2999 and $CONDITIONS'  --target-dir=/user/venu/emptarget -m 1
+ 
+#sometime even if u mention $CONDITIONS its not working at that time use \$CONDITIONS ... here \$ means escape character $ 
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl --username ousername --password opassword --query 'SELECT * FROM OUSERNAME.EMP where sal >2999 and \$CONDITIONS'  --target-dir=/user/venu/emptarget -m 1
+
+
+
+//when u r importing data if already data exists, overwrite it using --delete-target-dir or use append option using "--append"
+
+ sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl --username ousername --password opassword --table EMP --delete-target-dir -m 1
+ 
+
+// you can join two tables and import the data
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl --username ousername --password opassword --query 'SELECT b.dname, b.loc, a.ename FROM emp a JOIN dept b on (a.deptno = b.deptno) WHERE \$CONDITIONS'  --target-dir=/user/venu/querybased -m 1
+
+ 
+ //check this data is stored in hdfs or not
+hdfs dfs -cat /user/venu/emptarget/part*
+
+//if already in hdfs store / append data in hdfs using --append
+
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl --username ousername --password opassword --query 'SELECT * FROM OUSERNAME.EMP where sal <2999 and $CONDITIONS' --append --target-dir=/user/venu/emptarget -m 1
+
+//import all tables
+sqoop  import-all-tables --connect jdbc:mysql://mysqldb.ckze5eqt6umg.ap-south-1.rds.amazonaws.com:3306/mysqldb --username ouser --password opassword  -m 1
+
+#by default all tables store in /user/hadoop folder ... if u want to overwrite that target folder use --warehouse-dir
+sqoop  import-all-tables --connect jdbc:mysql://mysqldb.ckze5eqt6umg.ap-south-1.rds.amazonaws.com:3306/mysqldb --username ouser --password opassword --warehouse-dir=/all -m 1
+#now all tables stored in /all hdfs folder.
+
+//import all except these tables
+
+sqoop import-all-tables --connect 'jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL' --username ousername --password opassword  --warehouse-dir /user/hive/warehouse  --exclude-tables 'EMP,DEPT' -m 1
+hdfs dfs -ls /user/hadoop/
+
+//overwrite change warehouse path 
+sqoop  import-all-tables --connect jdbc:mysql://mysqldb.ckze5eqt6umg.ap-south-1.rds.amazonaws.com:3306/mysqldb --username ouser --password opassword  --warehouse-dir /user/oracle -m 1
+//warehouse
+sqoop import --connect 'jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL' --username ousername --password opassword --table EMP --warehouse-dir /user/hive/warehouse   -m 1
+
+
+
+
+//import data from mssql
+////////////////////////
+CREATE TABLE tempdb.dbo.Products  
+   (ProductID int PRIMARY KEY NOT NULL,  
+    ProductName varchar(25) NOT NULL,  
+    Price money NULL,  
+    ProductDescription text NULL)  
+
+
+INSERT tempdb.dbo.Products (ProductID, ProductName, Price, ProductDescription)  
+    VALUES (1, 'Clamp', 12.48, 'Workbench clamp')  
+	
+	INSERT tempdb.dbo.Products (ProductName, ProductID, Price, ProductDescription)  
+    VALUES ('Screwdriver', 50, 3.17, 'Flat head')  
+	
+	INSERT tempdb.dbo.Products  
+    VALUES (75, 'Tire Bar', NULL, 'Tool for changing tires.') 
+	
+	INSERT Products (ProductID, ProductName, Price)  
+    VALUES (3000, '3mm Bracket', .52) 
+	
+	UPDATE tempdb.dbo.Products  
+    SET ProductName = 'Flat Head Screwdriver'  
+    WHERE ProductID = 50  
+
+	https://docs.microsoft.com/en-us/sql/t-sql/lesson-1-creating-database-objects
+	
+	sqoop import --connect 'jdbc:sqlserver://mssql.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1433;database=tempdb' --username msusername --password mspassword --driver com.microsoft.sqlserver.jdbc.SQLServerDriver  --table "dbo.Products" --target-dir=/user/venu/mssqlimport -m 1
+
+//like oracle, place jdbc driver in sqoop folder
+
+//if you want to import data from mssql or teradata or redshift table, ist mandatory use --driver
+
+
+//import data to hive
+
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl --username ousername --password opassword --table EMP --hive-import -m 1
+//now when u r importing data from oracle table name emp, so in hive also tablename is emp if you want to overwrite tablename use --hive-table
+
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl --username ousername --password opassword --table EMP --hive-import --hive-table  newemp -m 1
+
+//if you have already table overwrite its
+ sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL --username ousername --password opassword --table EMP --hive-overwrite  -m 1
+ 
+ 
+
+
+if you want to import hive data in particular target folder target-dir doesn't support alternatively use warehouse-dir
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl --username ousername --password opassword --table EMP --hive-import --target-dir=/user/hive/hiveimp -m 1
+
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/orcl --username ousername --password opassword --table EMP --hive-import --warehouse-dir=/user/hive/ -m 1
+
+
+//import data in avro format
+
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL --username ousername --password opassword --table EMP --as-avrodatafile -m 1
+
+hdfs dfs -cat /user/hadoop/EMP/part*
+
+//import to  in avro format
+
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL --username ousername --password opassword --table EMP --as-avrodatafile -m 1
+
+
+//import in parquet format
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL --username ousername --password opassword --table EMP --as-parquetfile -m 1
+
+//Sequencefile
+
+sqoop import --connect jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL --username ousername --password opassword --table EMP --as-sequencefile -m 1
+
+
+//when you are importing data by default row separated by , but if you want to separated by tab \t use --fields-terminated-by '\t'
+
+sqoop import --connect 'jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL' --username ousername --password opassword --table ASL --target-dir=/tabdatatarget/ --fields-terminated-by '\t'  -m 1
+
+
+
+--incremental import 
+///////////////////////
+its useful in streaming data.
+
+sqoop import --connect 'jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL' --username ousername --password opassword --table EMP --check-column empno --incremental append --last-value 7934 --warehouse-dir /user/hive/warehouse  -m 1
+
+sqoop job  --create myjob import --connect 'jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL' --username ousername --password opassword --table EMP --check-column empno --incremental append --last-value 7934 --warehouse-dir /user/hive/warehouse  -m 1
+sqoop job --list
+
+sqoop job --exec myjob
+
+//export////////very head ache
+
+
+first create a table in oracle
+put data in hdfs folder only
+hdfs dfs -mkdir /asldata/
+
+than export the database
+
+sqoop export --connect 'jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL' --username ousername --password opassword --table ASL --export-dir=/asldata/   -m 1
+
+sqoop export --connect 'jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL' --username ousername --password opassword --table ASL --export-dir=/samp/   -m 1
+//its append
+//now if you want to update data in oracle follow this command.
+sqoop export --connect 'jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL' --username ousername --password opassword --table ASL --update-key NAME --update-mode allowinsert --export-dir=/tworecords  --input-fields-terminated-by ',' -m 2
+
+
+
+https://stackoverflow.com/questions/25887086/sqoop-export-using-update-key
+
+//limits if you want skip header in sqoop not possible
+similarly when u r importing its not possible to import schema.
+especially mal records, very headache in sqoop
+
+sqoop export --connect 'jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL' --username ousername --password opassword --table USADATAONLY  --export-dir=/USDATA/   -m 1
+ 
+	
+	
+
+//WHEN YOU are export data, bydefault fields terminated by ',' so instead of , if you want tab \t separated use --input-fields-terminated-by '\t';
+means if you have each data separated by tab use it 
+let eg:
+cat >tabdata.txt
+naveen	88	hyd
+nandu	44	blr
+nitin	74	ogl
+n	99	blr
+ctrl+d
+hdfs dfs -mkdir /tabdata
+hdfs dfs -put tabdata.txt /tabdata
+ sqoop export --connect 'jdbc:oracle:thin://@oracledb.ck8xvu8hemdj.ap-south-1.rds.amazonaws.com:1521/ORCL' --username ousername --password opassword --table ASL --export-dir=/tabdata/ --input-fields-terminated-by '\t'  -m 1
+ 
+ 

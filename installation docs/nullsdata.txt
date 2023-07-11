@@ -1,0 +1,6 @@
+name,phone,email
+venu,null,null
+anu,,
+anusha,null,
+prakash,,null
+pramod,9999,pramod@gmail.com

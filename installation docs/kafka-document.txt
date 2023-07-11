@@ -1,0 +1,174 @@
+E:\bigdata\kafka_2.12-2.8.1\
+
+bin\windows\zookeeper-server-start.bat config\zookeeper.properties
+bin\windows\kafka-server-start.bat config\server.properties
+bin\windows\kafka-topics.bat --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic may25
+
+//aboe 3 steps mandatory in any env ..(learning, development, production env )
+
+bin\windows\kafka-topics.bat --list --zookeeper localhost:2181
+
+
+bin\windows\kafka-console-producer.bat --broker-list localhost:9092 --topic tweets
+bin\windows\kafka-console-consumer.bat  --bootstrap-server localhost:9092  --topic apr4 --from-beginning  
+
+https://kafka.apache.org/quickstart
+
+https://spark.apache.org/docs/3.1.2/structured-streaming-kafka-integration.html
+https://mvnrepository.com/artifact/org.apache.spark/spark-sql-kafka-0-10_2.12/3.1.2
+https://mvnrepository.com/artifact/org.apache.commons/commons-pool2/2.11.1
+
+dependencies:
+https://mvnrepository.com/artifact/org.apache.spark/spark-streaming-kafka-0-10_2.12/3.1.2
+https://mvnrepository.com/artifact/org.apache.spark/spark-token-provider-kafka-0-10_2.12/3.1.2
+
+copy jars and place in spark/jars folder
+
+https://kafka-python.readthedocs.io/en/master/
+
+
+samplecode
+////////////////consumer...structure streaming....////////////////
+from pyspark.sql import *
+from pyspark.sql.functions import *
+
+spark = SparkSession.builder.master("local[2]").appName("test").getOrCreate()
+df = spark.readStream.format("kafka") \
+  .option("kafka.bootstrap.servers", "localhost:9092") \
+  .option("subscribe", "apr4").load()
+df.printSchema()
+ndf=df.selectExpr("CAST(value AS STRING)")
+ndf.writeStream.outputMode("append").format("console").start().awaitTermination()
+
+/////////////////producer........python code................./////////
+from kafka import KafkaProducer
+from kafka.Errors import KafkaError
+import os
+from time import sleep
+import json
+from json import dumps
+producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
+
+path="E:\\tmp\\live\\"
+#i want to read data from this above folder one by one file i want to send to kafka broker
+dir_list = os.listdir(path)
+for file in dir_list:
+    with open(path+str(file),errors="ignore") as f:
+        line = f.read()
+        print(line)
+        producer.send('apr4', dumps(line).encode('utf-8') )
+        sleep(1)
+
+    #kafka store like this
+    #apr4,"{results:[{...."
+    #apr4,"second message"
+    #apr4,"3mesage"
+
+/////////////////////////////////////////////////////////////////////usecase 2 ..kafka spark snowflake poc/////////////
+#This code get logs from specified path .. that path generate different logs. that logs get using this code.
+
+from kafka import KafkaProducer
+from kafka.errors import KafkaError
+import os
+from time import sleep
+import json
+from json import dumps
+producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
+
+path="C:\\logs\\access_log_20230405-185307.log"
+#i want to read data from this above folder one by one file i want to send to kafka broker
+with open(path,errors="ignore",mode='r') as f:
+    for line in f:
+        print(line)
+        producer.send('apr5', line.encode('utf-8') )
+        sleep(1)
+
+/////////////////////////////////////////////Kafka consumer code ////
+#this code get data from kafka .. and make a structure and store this data in mysql
+from pyspark.sql import *
+from pyspark.sql.functions import *
+
+spark = SparkSession.builder.master("local[2]").appName("test").getOrCreate()
+df = spark.readStream.format("kafka") \
+  .option("kafka.bootstrap.servers", "localhost:9092") \
+  .option("subscribe", "apr5").load()
+df.printSchema()
+ndf=df.selectExpr("CAST(value AS STRING)")
+log_reg = r'^(\S+) (\S+) (\S+) \[([\w:/]+\s[+\-]\d{4})\] "(\S+) (\S+) (\S+)" (\d{3}) (\S+) "(\S+)" "([^"]*)'
+
+res=ndf.select(regexp_extract('value', log_reg, 1).alias('ip'),
+                         regexp_extract('value', log_reg, 4).alias('date'),
+                         regexp_extract('value', log_reg, 6).alias('request'),
+                         regexp_extract('value', log_reg, 10).alias('referrer'))
+
+#res.writeStream.outputMode("append").format("console").start().awaitTermination()
+def write2Mysql(df, batch_id):
+    cdf = df.withColumn("date",to_date(col("date"),"dd/MMM/yyyy:HH:mm:ss Z"))
+    #https://spark.apache.org/docs/latest/sql-ref-datetime-pattern.html
+    cdf.write.mode('append').format('jdbc')\
+        .option("url", 'jdbc:mysql://mysqldb.cpnk9yb0uvo8.ap-south-1.rds.amazonaws.com:3306/mysqldb?useSSL=false')\
+        .option("driver", "com.mysql.cj.jdbc.Driver")\
+        .option("dbtable", "kafkaSparkLivedata") \
+        .option("user", "myuser") \
+        .option("password", "mypassword") \
+        .save()
+
+res.writeStream \
+    .foreachBatch(write2Mysql) \
+    .outputMode('append') \
+    .start() \
+    .awaitTermination()
+
+////////////////////////////////////////
+
+#if u want to store this data in snowflake try this function
+from pyspark.sql import *
+from pyspark.sql.functions import *
+
+spark = SparkSession.builder.master("local[2]").appName("test").getOrCreate()
+df = spark.readStream.format("kafka") \
+  .option("kafka.bootstrap.servers", "localhost:9092") \
+  .option("subscribe", "apr5").load()
+df.printSchema()
+ndf=df.selectExpr("CAST(value AS STRING)")
+log_reg = r'^(\S+) (\S+) (\S+) \[([\w:/]+\s[+\-]\d{4})\] "(\S+) (\S+) (\S+)" (\d{3}) (\S+) "(\S+)" "([^"]*)'
+
+res=ndf.select(regexp_extract('value', log_reg, 1).alias('ip'),
+                         regexp_extract('value', log_reg, 4).alias('date'),
+                         regexp_extract('value', log_reg, 6).alias('request'),
+                         regexp_extract('value', log_reg, 10).alias('referrer'))
+
+#res.writeStream.outputMode("append").format("console").start().awaitTermination()
+def write2sf(df, batch_id):
+    df.write.mode('append').format('jdbc')\
+        .option("sfURL", 'klingeq-yn24889.snowflakecomputing.com')\
+        .option("driver", "net.snowflake.spark.snowflake")\
+        .option("dbtable", "kafkaSparkSnowflake").option("sfWarehouse","SMALL_CLUSTER") \
+        .option("sfUser", "*****").option("sfSchema","public") \
+        .option("sfPassword", "****").option("sfDatabase","****")\
+        .save()
+
+res.writeStream \
+    .foreachBatch(write2sf) \
+    .outputMode('append') \
+    .start() \
+    .awaitTermination()
+
+
+//////////////////////////////////////////////////////////////////////////
+What is kafka?
+kafka is a message broker. 
+
+what producer api?
+producer api is a java/pyhon/scala code .. this code get data from source and send to kafka brokers.
+u have to write a code ...
+
+
+
+kafka vs sqoop?
+sqoop ... auto generate code .. u no need to write .. its' import export tool
+kafka ... message broker .. u have to write a code to get data from source like oracle and store in hdfs 
+sqoop only for rdbms & hadoop ecosystem ..
+kafka .. any source to any sinks
+
+

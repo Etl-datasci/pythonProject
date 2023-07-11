@@ -1,0 +1,661 @@
+
+//python 2.7 version only supported in cassandra 3.7.So install python 2.7 in Anaconda
+conda create --name py27 python=2.7
+
+//activate py27 virtual environment 
+conda activate py27
+
+//To check Python Version
+python
+
+//Start Cassandra server
+cassandra -f
+
+-------------------
+open another terminal after 5 mnts and practice in cqlsh
+
+//type below to activate py27 in new session
+conda activate py27
+
+cqlsh
+
+Create Keyspaces as below.....
+
+//In mysql database...in Cassandra its called KEYSPACE
+
+CREATE KEYSPACE Venudb
+    WITH REPLICATION = {
+        'class': 'SimpleStrategy', 
+        'replication_factor': 1
+    };
+
+	DESCRIBE Venudb
+
+	USE Venudb;
+create table asl (
+id INT PRIMARY KEY,
+name varchar,
+city varchar
+);
+insert into asl (id, name, city) values(1,'venu','hyderabad');
+insert into asl (id, name, city) values(2,'sita','hyderabad');
+insert into asl (id, name, city) values(3,'subbu','hyderabad');
+
+insert into asl (id, name, city) values(4,'brahma','hyderabad');
+insert into asl (id, name, city) values(5,'nirmal','bangalore');
+insert into asl (id, name, city) values(6,'nischal','bangalore');
+insert into asl (id, name, city) values(7,'pramod','bangalore');
+insert into asl (id, name, city) values(8,'anu','hyderabad');
+insert into asl (id, name, city) values(9,'ali','chennai');
+insert into asl (id, name, city) values(10,'koti','chennai');
+insert into asl (id, name, city) values(11,'venkat','chennai');
+	
+	select * from asl where city='hyderabad';
+	
+	//Invalid Request error will come as where clause did not contain Primary Key i.e id information.
+	
+	update asl set name="Renu" where id=8; 
+	
+	//Row will be updated as where condition contains primary key
+	
+	select * from asl where id=8;
+	//now it will retrieve one corresponding row.
+	
+	 id | city      | name
+	----+-----------+------
+	  8 | hyderabad |  anu
+
+
+CREATE KEYSPACE venuks
+
+     WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
+use venuks;
+
+CREATE TABLE temperature_by_day (
+   weatherstation_id text,
+   date text,
+   event_time timestamp,
+   temperature float,
+   PRIMARY KEY ((weatherstation_id,date),event_time)
+);
+
+INSERT INTO temperature_by_day(weatherstation_id,date,event_time,temperature)
+VALUES ('1234WXYZ','2016-04-03','2016-04-03 07:01:00',73);
+ 
+INSERT INTO temperature_by_day(weatherstation_id,date,event_time,temperature)
+VALUES ('1234WXYZ','2016-04-03','2016-04-03 07:02:00',70);
+ 
+INSERT INTO temperature_by_day(weatherstation_id,date,event_time,temperature)
+VALUES ('1234WXYZ','2016-04-04','2016-04-04 07:01:00',73);
+ 
+INSERT INTO temperature_by_day(weatherstation_id,date,event_time,temperature)
+VALUES ('1234WXYZ','2016-04-04','2016-04-04 07:02:00',74);
+
+SELECT weatherstation_id, date, MAX(temperature) FROM temperature_by_day GROUP BY weatherstation_id, date;
+
+SELECT weatherstation_id, date, MAX(temperature) FROM temperature_by_day GROUP BY weatherstation_id, date, event_time;
+
+
+describe keyspaces
+
+create table nep (
+phone INT,
+name varchar,
+email varchar,
+primary key (phone,name,email)
+);
+
+insert into nep (phone, name, email) values(123456363,'venu','venu@gmail.com');
+insert into nep (phone, name, email) values(2243563,'sita','sita@yahoo.com');
+insert into nep (phone, name, email) values(3563737,'subbu','subbu@gmail.com');
+insert into nep (phone, name, email) values(45536373,'brahma','vijay@gmail.com');
+
+
+//Joins concept also did not work in Cassandra
+select a.id,a.loc,a.name,n.phone,n.email from asl a join nep n;
+SyntaxException: line 1:50 no viable alternative at input 'a' (...n.phone,n.email from [asl] a...)
+
+Use Intellij to create code in Spark Scala as below...
+
+We will get data from Cassandra and process that data(Join) using SQL and then store resultant data in again Cassandra.
+
+package com.bigdata.spark.sparksql
+import org.apache.spark.sql._
+import org.apache.spark.sql.functions._
+
+object cassandraintegration {
+  def main(args: Array[String]) {
+    val spark = SparkSession.builder.master("local[*]").appName("cassandraintegration").getOrCreate()
+    //    val ssc = new StreamingContext(spark.sparkContext, Seconds(10))
+    val sc = spark.sparkContext
+
+    import spark.implicits._
+    import spark.sql
+   val asldf= spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .option("keyspace", "sandhyadb")
+      .option("table", "asl")
+      .load()
+
+    val nepdf= spark.read.format("org.apache.spark.sql.cassandra")
+      .option("keyspace", "sandhyadb").option("table", "nep").load()
+    asldf.createOrReplaceTempView("asl")
+    nepdf.createOrReplaceTempView("nep")
+    val res = spark.sql("select a.*, n.phone, n.email from asl a join nep n on a.name=n.name")
+    res.show()
+    res.write.mode(SaveMode.Append).format("org.apache.spark.sql.cassandra")
+      .option("keyspace", "sandhyadb").option("table", "asljoinnep").save()
+    // create table asljoinnep(id int primary key, city varchar, name varchar, phone int, email varchar)
+    spark.stop()
+  }
+}
+
+
+
+*********************Cassandra additional Practice*************************
+
+
+usecase 3
+//Cassandra Aggregates - min, max, avg, group by
+
+CREATE TABLE Emp_record
+ (
+  E_id int PRIMARY KEY,
+  E_score int,
+  E_name text,
+  E_city text
+ );
+INSERT INTO Emp_record(E_id, E_score, E_name, E_city)
+       values (101, 85, 'ashish', 'Noida');
+INSERT INTO Emp_record(E_id, E_score, E_name, E_city)
+       values (102, 90, 'ankur', 'meerut');
+INSERT INTO Emp_record(E_id, E_score, E_name, E_city)
+       values (103, 99, 'shivang', 'gurugram');
+INSERT INTO Emp_record(E_id, E_score, E_name, E_city)
+       values (104, 85, 'abi', 'meerut');
+INSERT INTO Emp_record(E_id, E_score, E_city)
+       values (105, 95, 'mumbai');
+
+select * from Emp_record;  
+
+SELECT COUNT(*) FROM Emp_record;
+SELECT COUNT(E_name) FROM Emp_record;
+SELECT MIN(E_score) FROM Emp_record;
+SELECT MAX(E_score) FROM Emp_record;
+SELECT SUM(E_score)  FROM Emp_record;
+SELECT AVG(E_score) FROM Emp_record;
+
+ucse case 4
+
+CREATE TABLE IF NOT EXISTS driver (
+  driver_name TEXT,
+  password TEXT,
+  mobile INT,
+  current_position TEXT,
+  skill SET<TEXT>,
+  PRIMARY KEY (driver_name)
+);
+
+CREATE INDEX IF NOT EXISTS driver_skill_index ON tranz.driver (skill);
+CREATE INDEX IF NOT EXISTS driver_current_position_index ON tranz.driver (current_position);
+
+-- See Question 2, Read 6.
+CREATE INDEX driver_password_index ON driver (password);
+
+-- 4.1 Create a table for vehicles. Table name: `vehicle`. Columns: `vehicle_id` (string, unique, if not exists), `status` (string), type (string)
+CREATE TABLE IF NOT EXISTS vehicle (
+  vehicle_id TEXT,
+  status TEXT,
+  type TEXT,
+  PRIMARY KEY (vehicle_id)
+);
+
+-- We will filter vehicles by status. See Question 2, Read 5.
+CREATE INDEX vehicle_status_index on vehicle (status);
+
+-- 6.1 Create a table for timetables. Table name: time_table. Columns: line_name (unique, if not exists, string), service_no (number, asc within line_name), station_name (string), latitude (double), longitude (double), time (int), distance (double),  Notes: time are departure times, except the last (destination) time, it is arrival time. Sorted asc by time.
+CREATE TABLE IF NOT EXISTS time_table (
+  line_name TEXT,
+  service_no INT,
+  station_name TEXT,
+  longitude DOUBLE,
+  latitude DOUBLE,
+  time INT,
+  distance DOUBLE,
+  PRIMARY KEY (line_name, service_no, time)
+) WITH CLUSTERING ORDER BY (service_no ASC, time ASC);
+
+-- 7.1 Need a vehicle_usage table for logging vehicle usage. Administrator can create this table with the following columns: vehicle_id, total_distance (counter).
+CREATE TABLE IF NOT EXISTS vehicle_usage (
+  vehicle_id TEXT,
+  total_distance COUNTER,
+  PRIMARY KEY (vehicle_id)
+);
+
+-- 8. Recording data points after the vehicle's engine started.
+-- 8.1 Administrator create a table. Table name: data_point. Columns: day (int), sequence (timestamp), latitude (double), longitude (double), speed (double)
+CREATE TABLE IF NOT EXISTS data_point (
+  day INT,
+  sequence TIMESTAMP,
+  longitude DOUBLE,
+  latitude DOUBLE,
+  speed DOUBLE,
+  PRIMARY KEY (day, sequence, longitude, latitude)
+);
+
+-- Question 2, 1. Read the number of working days of a driver. (Payroll will use this information.). App collects this information in a separate table. Table name: driver_working_days, Columns: driver_name (unique, string), working_day (counter). This is a counter table and the app will update the counter, when the driver starts to work.
+CREATE TABLE IF NOT EXISTS driver_working_days (
+  driver_name TEXT,
+  working_day COUNTER,
+  PRIMARY KEY (driver_name)
+);
+
+CONSISTENCY QUORUM;
+INSERT INTO driver
+  (driver_name, current_position, mobile, password, skill )
+  VALUES ('milan', 'Upper Hutt', 211111, 'mm77', { 'Matangi' })
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO driver
+  (driver_name, current_position, mobile, password, skill )
+  VALUES ('pavle', 'Upper Hutt', 213344, 'pm33', { 'Ganz Mavag', 'Guliver' })
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO driver
+  (driver_name, current_position, mobile, password, skill )
+  VALUES ('pondy', 'Wellington', 216677, 'pondy', { 'Matangi', 'Kiwi Rail' })
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO driver
+  (driver_name, current_position, mobile, password, skill )
+  VALUES ('fred', 'Taita', 210031, 'f5566f', { 'Gulliver', 'Ganz Mavag' })
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO driver
+  (driver_name, current_position, mobile, password, skill )
+  VALUES ('jane', 'Waikanae', 213141, 'jjjj', { 'Matangi' })
+  IF NOT EXISTS;
+
+-- 3.1 Drivers can change their password. They provide `old_password` and `new_password`. Update the driver's row with `new_password` only if the `old_password` equal with the stored `password`. If the conditions apply, `password` will be equal with `new_password`.
+CONSISTENCY QUORUM;
+UPDATE driver
+  SET password = 'dhy@@EE3#'
+  WHERE driver_name = 'pondy'
+  IF password = 'pondy';
+
+-- 3.2 Drivers can update their `current_position`: (with city name string) `'Wellington'` OR (with vehicle) `vehicle_id` OR (with not available string constant) `'not_available'`. The update process managed by the app, based on the driver's skill and the location of the train. See Question 2, Read 5.
+CONSISTENCY QUORUM;
+UPDATE driver
+  SET current_position = 'Petone'
+  WHERE driver_name = 'pavle';
+
+
+-- 3.3 Drivers can add new skill to `skill` column. Skill column type is `SET<string>`.
+CONSISTENCY QUORUM;
+UPDATE driver
+  SET skill = skill + {'Ganz Mavag'}
+  WHERE driver_name = 'milan';
+
+
+-- 3.4 App updates a counter log table for payrol. See Question 2, Read 1.
+CONSISTENCY QUORUM;
+UPDATE driver_working_days
+  SET working_day = working_day + 1
+  WHERE driver_name = 'jane';
+
+-- 4.2 Seed the initial vehicles data.
+/*
+=============================================
+vehicle_id        status          type
+---------------------------------------------
+FA1122            Upper Hutt      Matangi
+FP8899            maintenance     Ganz Mavag
+FA4864            Wellington      Matangi
+KW3300            Wellington      KiwiRail
+=============================================
+*/
+
+CONSISTENCY QUORUM;
+INSERT INTO vehicle
+  (vehicle_id, status, type )
+  VALUES ('FA1122', 'Upper Hutt', 'Matangi')
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO vehicle
+  (vehicle_id, status, type )
+  VALUES ('FP8899', 'maintenance', 'Ganz Mavag')
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO vehicle
+  (vehicle_id, status, type )
+  VALUES ('FA4864', 'Wellington', 'Matangi')
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO vehicle
+  (vehicle_id, status, type )
+  VALUES ('KW3300', 'Wellington', 'KiwiRail')
+  IF NOT EXISTS;
+
+-- 5. App automatically updates the `status` of a `vehicle`. Station name, like `Wellington` OR `in_use` OR `maintenance` OR `out_of_order`.
+-- 5.1 Status will be updated based on timetable (departure). `Status` will be the departure station name. See Question 2, Read 4.
+CONSISTENCY QUORUM;
+UPDATE vehicle
+  SET status = 'Wellington'
+  WHERE vehicle_id = 'FA1122';
+
+--   5.2 `Status` will be updated to `in_use`, when driver turns on the engine.
+CONSISTENCY QUORUM;
+UPDATE vehicle
+  SET status = 'in_use'
+  WHERE vehicle_id = 'KW3300';
+
+-- 5.3 Status will be updated when the driver turns off the engine on the destination station. `status` will be the destination station name.
+-- A log event will be called also, see Question 1, Update 7.2.
+CONSISTENCY QUORUM;
+UPDATE vehicle
+  SET status = 'Upper Hut'
+  WHERE vehicle_id = 'FA4864';
+
+-- 6.2 Seed `time_table`.
+/*
+============================================================================================
+line_name,               service_no, station_name, longitude, latitude, time, distance
+--------------------------------------------------------------------------------------------
+'Hutt Valley Line (north bound)', 1, 'Wellington', 174.7762, -41.2865, 605, 0
+'Hutt Valley Line (north bound)', 1, 'Petone', 174.8851, -41.227, 617, 8.3
+'Hutt Valley Line (north bound)', 1, 'Waterloo', 174.9081, -41.2092, 625, 13.3
+'Hutt Valley Line (north bound)', 1, 'Taita', 174.9608, -41.1798, 634, 19.0
+'Hutt Valley Line (north bound)', 1, 'Silverstream', 175.010276, -41.147283, 642, 26.5
+'Hutt Valley Line (north bound)', 1, 'Upper Hutt', 175.0708, -41.1244, 650, 34.3
+'Hutt Valley Line (north bound)', 11, 'Wellington', 174.7762, -41.2865, 1935, 0
+'Hutt Valley Line (north bound)', 11, 'Petone', 174.8851, -41.227, 1947, 8.3
+'Hutt Valley Line (north bound)', 11, 'Woburn', …
+[8:52 PM, 9/10/2020] Venu Hadoop Sir*****: create table employees_tbl (
+id INT AUTO_INCREMENT PRIMARY KEY,
+name varchar(20),
+dept varchar(10),
+salary int(10)
+);
+
+insert into employees_tbl values(100,'Michael','Sales',5500);
+insert into employees_tbl values(200,'Cassandra','Technology',6000);
+insert into employees_tbl values(300,'Samuel','Technology',7000);
+insert into employees_tbl values(400,'John','Marketing',9500);
+insert into employees_tbl values(500,'Beth','Technology',6500);
+insert into employees_tbl values(600,'Peter','HR',5000);
+insert into employees_tbl values(700,'Romeo','Legal',5400);
+
+
+usecase 2
+CREATE KEYSPACE venuks
+     WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
+use venuks
+
+CREATE TABLE temperature_by_day (
+   weatherstation_id text,
+   date text,
+   event_time timestamp,
+   temperature float,
+   PRIMARY KEY ((weatherstation_id,date),event_time)
+);
+
+INSERT INTO temperature_by_day(weatherstation_id,date,event_time,temperature)
+VALUES ('1234WXYZ','2016-04-03','2016-04-03 07:01:00',73);
+ 
+INSERT INTO temperature_by_day(weatherstation_id,date,event_time,temperature)
+VALUES ('1234WXYZ','2016-04-03','2016-04-03 07:02:00',70);
+ 
+INSERT INTO temperature_by_day(weatherstation_id,date,event_time,temperature)
+VALUES ('1234WXYZ','2016-04-04','2016-04-04 07:01:00',73);
+ 
+INSERT INTO temperature_by_day(weatherstation_id,date,event_time,temperature)
+VALUES ('1234WXYZ','2016-04-04','2016-04-04 07:02:00',74);
+
+SELECT weatherstation_id, date, MAX(temperature) FROM temperature_by_day GROUP BY weatherstation_id, date;
+
+SELECT weatherstation_id, date, MAX(temperature) FROM temperature_by_day GROUP BY weatherstation_id, date, event_time;
+
+
+usecase 3
+//Cassandra Aggregates - min, max, avg, group by
+
+CREATE TABLE Emp_record
+ (
+  E_id int PRIMARY KEY,
+  E_score int,
+  E_name text,
+  E_city text
+ );
+INSERT INTO Emp_record(E_id, E_score, E_name, E_city)
+       values (101, 85, 'ashish', 'Noida');
+INSERT INTO Emp_record(E_id, E_score, E_name, E_city)
+       values (102, 90, 'ankur', 'meerut');
+INSERT INTO Emp_record(E_id, E_score, E_name, E_city)
+       values (103, 99, 'shivang', 'gurugram');
+INSERT INTO Emp_record(E_id, E_score, E_name, E_city)
+       values (104, 85, 'abi', 'meerut');
+INSERT INTO Emp_record(E_id, E_score, E_city)
+       values (105, 95, 'mumbai');
+
+select * from Emp_record;  
+
+SELECT COUNT(*) FROM Emp_record;
+SELECT COUNT(E_name) FROM Emp_record;
+SELECT MIN(E_score) FROM Emp_record;
+SELECT MAX(E_score) FROM Emp_record;
+SELECT SUM(E_score)  FROM Emp_record;
+SELECT AVG(E_score) FROM Emp_record;
+
+ucse case 4
+
+CREATE TABLE IF NOT EXISTS driver (
+  driver_name TEXT,
+  password TEXT,
+  mobile INT,
+  current_position TEXT,
+  skill SET<TEXT>,
+  PRIMARY KEY (driver_name)
+);
+
+CREATE INDEX IF NOT EXISTS driver_skill_index ON tranz.driver (skill);
+CREATE INDEX IF NOT EXISTS driver_current_position_index ON tranz.driver (current_position);
+
+-- See Question 2, Read 6.
+CREATE INDEX driver_password_index ON driver (password);
+
+-- 4.1 Create a table for vehicles. Table name: `vehicle`. Columns: `vehicle_id` (string, unique, if not exists), `status` (string), type (string)
+CREATE TABLE IF NOT EXISTS vehicle (
+  vehicle_id TEXT,
+  status TEXT,
+  type TEXT,
+  PRIMARY KEY (vehicle_id)
+);
+
+-- We will filter vehicles by status. See Question 2, Read 5.
+CREATE INDEX vehicle_status_index on vehicle (status);
+
+-- 6.1 Create a table for timetables. Table name: time_table. Columns: line_name (unique, if not exists, string), service_no (number, asc within line_name), station_name (string), latitude (double), longitude (double), time (int), distance (double),  Notes: time are departure times, except the last (destination) time, it is arrival time. Sorted asc by time.
+CREATE TABLE IF NOT EXISTS time_table (
+  line_name TEXT,
+  service_no INT,
+  station_name TEXT,
+  longitude DOUBLE,
+  latitude DOUBLE,
+  time INT,
+  distance DOUBLE,
+  PRIMARY KEY (line_name, service_no, time)
+) WITH CLUSTERING ORDER BY (service_no ASC, time ASC);
+
+-- 7.1 Need a vehicle_usage table for logging vehicle usage. Administrator can create this table with the following columns: vehicle_id, total_distance (counter).
+CREATE TABLE IF NOT EXISTS vehicle_usage (
+  vehicle_id TEXT,
+  total_distance COUNTER,
+  PRIMARY KEY (vehicle_id)
+);
+
+-- 8. Recording data points after the vehicle's engine started.
+-- 8.1 Administrator create a table. Table name: data_point. Columns: day (int), sequence (timestamp), latitude (double), longitude (double), speed (double)
+CREATE TABLE IF NOT EXISTS data_point (
+  day INT,
+  sequence TIMESTAMP,
+  longitude DOUBLE,
+  latitude DOUBLE,
+  speed DOUBLE,
+  PRIMARY KEY (day, sequence, longitude, latitude)
+);
+
+-- Question 2, 1. Read the number of working days of a driver. (Payroll will use this information.). App collects this information in a separate table. Table name: driver_working_days, Columns: driver_name (unique, string), working_day (counter). This is a counter table and the app will update the counter, when the driver starts to work.
+CREATE TABLE IF NOT EXISTS driver_working_days (
+  driver_name TEXT,
+  working_day COUNTER,
+  PRIMARY KEY (driver_name)
+);
+
+CONSISTENCY QUORUM;
+INSERT INTO driver
+  (driver_name, current_position, mobile, password, skill )
+  VALUES ('milan', 'Upper Hutt', 211111, 'mm77', { 'Matangi' })
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO driver
+  (driver_name, current_position, mobile, password, skill )
+  VALUES ('pavle', 'Upper Hutt', 213344, 'pm33', { 'Ganz Mavag', 'Guliver' })
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO driver
+  (driver_name, current_position, mobile, password, skill )
+  VALUES ('pondy', 'Wellington', 216677, 'pondy', { 'Matangi', 'Kiwi Rail' })
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO driver
+  (driver_name, current_position, mobile, password, skill )
+  VALUES ('fred', 'Taita', 210031, 'f5566f', { 'Gulliver', 'Ganz Mavag' })
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO driver
+  (driver_name, current_position, mobile, password, skill )
+  VALUES ('jane', 'Waikanae', 213141, 'jjjj', { 'Matangi' })
+  IF NOT EXISTS;
+
+-- 3.1 Drivers can change their password. They provide `old_password` and `new_password`. Update the driver's row with `new_password` only if the `old_password` equal with the stored `password`. If the conditions apply, `password` will be equal with `new_password`.
+CONSISTENCY QUORUM;
+UPDATE driver
+  SET password = 'dhy@@EE3#'
+  WHERE driver_name = 'pondy'
+  IF password = 'pondy';
+
+-- 3.2 Drivers can update their `current_position`: (with city name string) `'Wellington'` OR (with vehicle) `vehicle_id` OR (with not available string constant) `'not_available'`. The update process managed by the app, based on the driver's skill and the location of the train. See Question 2, Read 5.
+CONSISTENCY QUORUM;
+UPDATE driver
+  SET current_position = 'Petone'
+  WHERE driver_name = 'pavle';
+
+
+-- 3.3 Drivers can add new skill to `skill` column. Skill column type is `SET<string>`.
+CONSISTENCY QUORUM;
+UPDATE driver
+  SET skill = skill + {'Ganz Mavag'}
+  WHERE driver_name = 'milan';
+
+
+-- 3.4 App updates a counter log table for payrol. See Question 2, Read 1.
+CONSISTENCY QUORUM;
+UPDATE driver_working_days
+  SET working_day = working_day + 1
+  WHERE driver_name = 'jane';
+
+-- 4.2 Seed the initial vehicles data.
+/*
+=============================================
+vehicle_id        status          type
+---------------------------------------------
+FA1122            Upper Hutt      Matangi
+FP8899            maintenance     Ganz Mavag
+FA4864            Wellington      Matangi
+KW3300            Wellington      KiwiRail
+=============================================
+*/
+
+CONSISTENCY QUORUM;
+INSERT INTO vehicle
+  (vehicle_id, status, type )
+  VALUES ('FA1122', 'Upper Hutt', 'Matangi')
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO vehicle
+  (vehicle_id, status, type )
+  VALUES ('FP8899', 'maintenance', 'Ganz Mavag')
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO vehicle
+  (vehicle_id, status, type )
+  VALUES ('FA4864', 'Wellington', 'Matangi')
+  IF NOT EXISTS;
+
+CONSISTENCY QUORUM;
+INSERT INTO vehicle
+  (vehicle_id, status, type )
+  VALUES ('KW3300', 'Wellington', 'KiwiRail')
+  IF NOT EXISTS;
+
+-- 5. App automatically updates the `status` of a `vehicle`. Station name, like `Wellington` OR `in_use` OR `maintenance` OR `out_of_order`.
+-- 5.1 Status will be updated based on timetable (departure). `Status` will be the departure station name. See Question 2, Read 4.
+CONSISTENCY QUORUM;
+UPDATE vehicle
+  SET status = 'Wellington'
+  WHERE vehicle_id = 'FA1122';
+
+--   5.2 `Status` will be updated to `in_use`, when driver turns on the engine.
+CONSISTENCY QUORUM;
+UPDATE vehicle
+  SET status = 'in_use'
+  WHERE vehicle_id = 'KW3300';
+
+-- 5.3 Status will be updated when the driver turns off the engine on the destination station. `status` will be the destination station name.
+-- A log event will be called also, see Question 1, Update 7.2.
+CONSISTENCY QUORUM;
+UPDATE vehicle
+  SET status = 'Upper Hut'
+  WHERE vehicle_id = 'FA4864';
+
+-- 6.2 Seed `time_table`.
+/*
+============================================================================================
+line_name,               service_no, station_name, longitude, latitude, time, distance
+--------------------------------------------------------------------------------------------
+'Hutt Valley Line (north bound)', 1, 'Wellington', 174.7762, -41.2865, 605, 0
+'Hutt Valley Line (north bound)', 1, 'Petone', 174.8851, -41.227, 617, 8.3
+'Hutt Valley Line (north bound)', 1, 'Waterloo', 174.9081, -41.2092, 625, 13.3
+'Hutt Valley Line (north bound)', 1, 'Taita', 174.9608, -41.1798, 634, 19.0
+'Hutt Valley Line (north bound)', 1, 'Silverstream', 175.010276, -41.147283, 642, 26.5
+'Hutt Valley Line (north bound)', 1, 'Upper Hutt', 175.0708, -41.1244, 650, 34.3
+'Hutt Valley Line (north bound)', 11, 'Wellington', 174.7762, -41.2865, 1935, 0
+'Hutt Valley Line (north bound)', 11, 'Petone', 174.8851, -41.227, 1947, 8.3
+'Hutt Valley Line (north bound)', 11, 'Woburn', …
+[9:44 PM, 9/10/2020] Venu Hadoop Sir*****: reate table nep (
+phone INT,
+name varchar,
+email varchar,
+primary key (phone,name,email)
+);
+
+insert into nep (phone, name, email) values(123456363,'venu','venu@gmail.com');
+insert into nep (phone, name, email) values(2243563,'sita','sita@yahoo.com');
+insert into nep (phone, name, email) values(3563737,'subbu','subbu@gmail.com');
+insert into nep (phone, name, email) values(45536373,'brahma','vijay@gmail.com');
+
+
+

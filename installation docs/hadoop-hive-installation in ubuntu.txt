@@ -1,0 +1,157 @@
+#if java not installed pls execute this command. if already installed pls ignore this step.
+sudo apt-get install openjdk-11-jdk
+sudo apt install openjdk-8-jdk
+
+java -version 
+
+ls /usr/lib/jvm/
+
+mkdir bigdata
+cd bigdata
+wget 
+wget https://downloads.apache.org/hive/hive-3.1.2/apache-hive-3.1.2-bin.tar.gz
+wget https://archive.apache.org/dist/hadoop/core/hadoop-3.2.2/hadoop-3.2.2.tar.gz
+
+tar xzf apache-hive-3.1.2-bin.tar.gz
+tar xzf hadoop-3.2.2.tar.gz
+
+gedit ~/.bashrc
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+
+export HADOOP_HOME=/home/hadoop/bigdata/hadoop-3.2.2
+
+export HADOOP_INSTALL=${HADOOP_HOME}
+export HADOOP_PREFIX=${HADOOP_HOME}
+export HADOOP_COMMON_HOME=${HADOOP_HOME}
+export HADOOP_HDFS_HOME=${HADOOP_HOME}
+export HADOOP_MAPRED_HOME=${HADOOP_HOME}
+export YARN_HOME=${HADOOP_HOME}
+export HADOOP_CMD=${HADOOP_HOME}
+export HADOOP_CONF_DIR=${HADOOP_HOME}/etc/hadoop
+export YARN_CONF_DIR=${HADOOP_HOME}/etc/hadoop
+export HADOOP_COMMON_LIB_NATIVE_DIR=${HADOOP_PREFIX}/lib/native
+export HADOOP_OPTS="$HADOOP_OPTS -Djava.library.path=${HADOOP_HOME}/lib/native"
+export PATH=$JAVA_HOME/bin:${HADOOP_HOME}/bin:${HADOOP_HOME}/sbin:$PATH
+
+
+
+export HIVE_HOME=/home/hadoop/bigdata/apache-hive-3.1.2-bin
+export HIVE_CONF_DIR=$HIVE_HOME/conf
+export HIVE_CLASS_PATH=$HIVE_CONF_DIR
+export HADOOP_USER_CLASSPATH_FIRST=true
+export PATH=$HIVE_HOME/bin:$PATH
+
+source ~/.bashrc
+
+
+in Hive modify this
+vi $HIVE_HOME/conf/hive-site.xml or
+gedit /bigdata/apache-hive-3.1.2-bin/conf/hive-site.xml
+
+
+<configuration>
+ <property>
+        <name>hive.metastore.warehouse.dir</name>
+        <value>/home/hadoop/bigdata/apache-hive-3.1.2-bin/warehouse</value>
+
+      </property>
+<property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:derby:/home/hadoop/bigdata/apache-hive-3.1.2-bin/metastore_db;databaseName=metastore_db;create=true</value>
+</property>
+</configuration>
+
+vi $HADOOP_HOME/conf/core-site.xml
+gedit /home/hadoop/bigdata/hadoop-3.2.2/etc/hadoop/core-site.xml
+
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+</configuration>
+
+vi $HADOOP_HOME/conf/hdfs-site.xml
+gedit /home/hadoop/bigdata/hadoop-3.2.2/etc/hadoop/hdfs-site.xml
+
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>/home/hadoop/bigdata/hadoop-3.2.2/dfs/namenode</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>/home/hadoop/bigdata/hadoop-3.2.2/dfs/datanode</value>
+    </property>
+ 
+</configuration>
+
+gedit /home/hadoop/bigdata/hadoop-3.2.2/etc/hadoop/mapred-site.xml
+
+<configuration>
+    <property>
+        <name>mapreduce.framework.name</name>
+        <value>yarn</value>
+    </property>
+    <property>
+        <name>mapreduce.application.classpath</name>
+        <value>$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/*:$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/lib/*</value>
+    </property>
+</configuration>
+
+
+gedit /home/hadoop/bigdata/hadoop-3.2.2/etc/hadoop/yarn-site.xml
+
+<configuration>
+    <property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+    </property>
+    <property>
+        <name>yarn.nodemanager.env-whitelist</name>
+        <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,PATH,LANG,TZ,HADOOP_MAPRED_HOME</value>
+    </property>
+</configuration>
+
+
+
+ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+chmod 0600 ~/.ssh/authorized_keys
+
+  
+rm $HIVE_HOME/lib/guava-19.0.jar
+
+
+cp $HADOOP_HOME/share/hadoop/hdfs/lib/guava-27.0-jre.jar $HIVE_HOME/lib/
+hdfs namenode -format
+//execute only first time don't execute in future
+
+start-dfs.sh && start-yarn.sh
+jps
+//if u get namenode, datanode, resource manager, node manager... good hadoop working
+
+
+
+
+schematool -dbType derby -initSchema
+//execute only first time don't execute in future
+
+hive
+
+
+errors
+Exception in thread "main" java.lang.ClassCastException: class jdk.internal.loader.ClassLoaders$AppClassLoader cannot be cast to class java.net.URLClassLoader (jdk.internal.loader.ClassLoaders$AppClassLoader and java.net.URLClassLoader are in module java.base of loader '')
+
+sudo apt install openjdk-8-jdk
+next in hadoop-env.sh place java path
+gedit /home/hadoop/bigdata/hadoop-3.2.2/etc/hadoop/hadoop-env.sh
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+in environment variable also change 
+
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+

@@ -1,0 +1,230 @@
+///////////////Instructions ///////////
+Before dig into ec2-emr commands first you have to configure the credentials 
+
+sudo apt update
+sudo apt install awscli -y
+
+IAM ... roles ...create roles ...dropdown ...redshift ... redshift customize ... s3 full privileges .... next ...name:reds3... ok
+
+and create IAM role and assign to EC2 .... EC2 ... Action >> security >> modifyIAM .. choose appropriate role....ok
+
+
+S3 ... a storage layer on top of all aws account holders ... storage on cloud/internet only...
+ur able to create up to 100 buckets ...
+these buckets almost like c drive e drive how u have in windows similarly u have buckets in s3 ...
+
+wget https://raw.githubusercontent.com/Katetsopa/WorldBank/master/world_bank.json
+wget https://raw.githubusercontent.com/michaelmior/big-data-notebooks/master/zips.json
+wget https://vincentarelbundock.github.io/Rdatasets/csv/AER/CPSSW3.csv
+
+wget https://vincentarelbundock.github.io/Rdatasets/csv/AER/DutchSales.csv
+
+Next do these operations
+
+/////////////////////Operations ///////////////////
+if u type aws s3  ... aws s3 support only these options 
+
+ls                                       | website                        
+cp                                       | mv                             
+rm                                       | sync                           
+mb   ... make bucket                                   | rb  
+
+
+
+//List the buckets (what are the buckets available in ur account shows)
+
+aws s3 ls
+
+//List the folders within the bucket
+aws s3 ls s3://venukatragadda
+
+//List the files within the buckets and folders recursively and human readable
+aws s3 ls s3://venukatragadda --recursive
+aws s3 ls s3://venukatragadda --recursive --human-readable --summarize
+
+//Creates an S3 bucket.(make bucket)
+If noone created any table with venufeb22 bucket , than only u r able to create otherwise u ll get "BucketAlreadyExists" error.
+
+aws s3 mb s3://venufeb22
+
+//remove a bucket, but the bucket must be empty to delete. if u have any other data u ll get "BucketNotEmpty" error
+
+aws s3 rb s3://mybucket
+//remove the bucket and internal files also (but it's not recommended, so create customize iam policy and assign to this role.
+
+aws s3 rb s3://mybucket --force
+
+//deletes a single s3 object:
+aws s3 rm s3://mybucket/test2.txt
+
+//delete all files in S3 bucket
+aws s3 rm s3://mybucket --recursive
+
+//remove all files except few files
+aws s3 rm s3://mybucket/ --recursive --exclude "*.jpg"
+aws s3 rm s3://mybucket/ --recursive --exclude "mybucket/another/*"
+
+
+
+//////////////copy commands ///////////////////////////////////
+
+cp used to copy to local to s3, or s3 to s3 or s3 to local data copy purpose useing.
+
+
+//Copying a local file to S3
+aws s3 cp test.txt s3://venukatragadda/test2.txt
+
+#if u want to copy multiple files must use recursive
+aws s3 cp . s3://venufeb23/input/ --recursive
+#if u use like this hiding files also copied ... here after cp  u have . (dot) dot means current path 
+i want to skip/don't copy hiding files at tahta ..
+
+
+ aws s3 cp . s3://venufeb23/input1/ --recursive --exclude ".*"
+ except hiding files (starts with .) other files copied to s3
+ 
+ #i want to copy only csv files remaingina all i don't want use include and exclude like this. 
+ aws s3 cp . s3://venufeb23/input2/ --recursive --exclude "*" --include "*.csv"
+
+#copy s3 to local system in datasets/ folder .... datasets/ folder on fly automatically created.
+
+aws s3 cp s3://venufeb23/input1/ datasets/ --recursive
+
+//Copying a file from S3 to S3
+aws s3 cp s3://venukatragadda/test.txt s3://venukatragadda/test2.txt
+or
+ aws s3 cp s3://venufeb23/ new/ --recursive --exclude "*" --include "*.csv"
+ 
+//Copying an S3 object to a local file
+aws s3 cp s3://venukatragadda/test.txt test2.txt
+
+//Copying an S3 object from one bucket to another
+aws s3 cp s3://venukatragadda/test.txt s3://venukatragadda2/
+
+//Recursively copying S3 objects to a local directory . means current dir
+aws s3 cp s3://venukatragadda . --recursive
+
+//Recursively copying local files to S3 and exclude some files
+
+aws s3 cp myDir s3://venukatragadda/ --recursive --exclude "*.jpg"
+
+//Recursively copying S3 objects to another bucket
+aws s3 cp s3://venukatragadda/ s3://venukatragadda2/ --recursive --exclude "venukatragadda/another/*"
+
+//You can combine --exclude and --include options to copy only objects that match a pattern, excluding all others: Let example copy only logs
+
+aws s3 cp s3://venukatragadda/logs/ s3://venukatragadda2/logs/ --recursive --exclude "*" --include "*.log"
+
+//Uploading a local file stream to S3
+
+aws s3 cp - s3://venukatragadda/stream.txt
+aws s3 cp -/home/ec2-user/logs s3://venukatragadda/logs
+
+//Downloading an S3 object as a local file stream
+aws s3 cp s3://venukatragadda/stream.txt -
+aws s3 cp s3://venukatragadda/stream.txt -/home/ec2-user/logs
+
+
+
+
+///////////////////////////////Move the data (Cut and paste)////////////
+
+aws s3 mv new/ s3://venufeb23/new/ --recursive  --exclude "*" --include "*.txt"
+
+
+cat > text.txt
+something
+CTRL+D
+//Move the file local to bucket
+aws s3 mv test.txt s3://venukatragadda/test2.txt
+
+//moves an object to a specified bucket and rename
+aws s3 mv s3://mybucket/test.txt s3://mybucket/test2.txt
+
+//moves a single object to a specified file locally:
+aws s3 mv s3://venukatragadda/test2.txt test.txt
+
+//Move the data from one s3 path to another
+aws s3 mv s3://mybucket/test.txt s3://mybucket2/
+
+//move all data to local 
+aws s3 mv s3://mybucket . --recursive
+
+//Move all data from local directory to s3 bucket also exclude few files ending with jpg
+aws s3 mv myDir s3://mybucket/ --recursive --exclude "*.jpg"
+
+// exclude all files from one directory 
+aws s3 mv s3://mybucket/ s3://mybucket2/ --recursive --exclude "mybucket/another/*"
+
+
+/////////////////////////////Sync/////////////////////
+Syncs directories and S3 prefixes. Recursively copies new and updated files from the source directory to the destination
+//syncs objects under a specified prefix and bucket to files in a local directory by uploading the local files to s3
+aws s3 sync . s3://mybucket
+
+//exclude specified files based on exclude option, also allows regex
+aws s3 sync . s3://mybucket --exclude "*.jpg"
+aws s3 sync . s3://mybucket --exclude "."
+aws s3 sync s3://mybucket/ . --exclude "*another/*"
+
+//if any files existing the files will be deleted
+aws s3 sync . s3://mybucket --delete
+
+
+
+//syncs objects under a specified prefix and bucket to objects under another specified prefix and bucket by copying s3 objects.
+
+aws s3 sync s3://mybucket s3://mybucket2
+
+// synch data is copied to local working dir
+aws s3 sync s3://mybucket .
+
+///////////////website//////////////
+
+
+Difference between traditional file system/HDFS & s3
+HDFs block oriented file system, s3, object oriented file system.
+HDFS u can compress data orc, parq, avro ...for bigdata processing optimized storage, 
+but s3 not only bigdata general purpose storage, no compress no optimized for anyhing.
+HDFS by default local systems, but support cloud also, but S3 is Cloud store.
+
+hdfs for clusters only recommended, but s3 u can use anywhere (if u have internet)
+
+
+other file systems usually block oriented file system so blocks organized by OS. So data in the form of files and folders, not possible to scale data on fly. it's posssible to lost data if u use commadity disk.
+
+S3 is a object oriented storage so every storage have unique ID in the form of URL, so u can access anywhere on the internet. Scalable data anytime, means no limit u can store TB, PB also on fly.
+Durablity, means take care of data loss and data available always.. 
+
+S3 vs Glacier
+
+S3 for most frequently accessed data,and it provides high performance, low latency(low time take to store, access), and high throughput(high speed pass through something object). It's best suitable for bigdata, IOT, to take care of storage issue.
+
+Glacier designed for data storage for archival storage, means in-active data or infrequently accessed data. It's very low-cost, highly durable, designed for old data. Let eg: u have 10 years to 100 years old data, no use of that old data, but in future useful so store in Glacier. 
+
+Glacier is 10 times cheaper than S3 for storing data, but retrieving data can be more expensive and time-consuming.
+
+
+What are Storage classes in S3?
+
+S3 Standard: it's default data storage class,  S3 and is designed for frequently accessed data. It provides high performance, low latency, and high durability recommended general storage purpose, means u can store structure, unstructure, semi structure data.
+
+S3 Standard-Infrequent Access class
+It's for data accessed less frequently, but still requires high durability and low latency access. Cheaper than Standard, but chargable to access data.
+
+One Zone-Infrequent Access (One Zone-IA):
+S3 standard infrequent access class store data in multiple availability zones, but One Zone-IA store in single Availablity zone. So little cheaper , but durablity not up to the mark.
+
+S3 Glacier: It's dead cheap than other classes,but recommended for long-term retention. To read data from Glacier it ll take little time may be minutes or hours.
+
+S3 Glacier Deep Archive:
+It's for very infrequent access, it's take a lot of time to read data from S3 Glacier, retrieval time it ll take more than 12 hours.
+
+
+Availability zone vs Regions
+
+availability zone is a physically isolated data center within region.
+Each region, contains two or more availability zones to provide high availability and fault tolerance. If resources not available from one availability zone , available in another availability zone. So 100% data safe.
+
+
+
